@@ -11,7 +11,7 @@ function getRequiredEnv(name: string) {
 }
 
 export function getR2BucketName() {
-  return process.env.R2_BUCKET_NAME || "atomica-originals-r2";
+  return getRequiredEnv("R2_BUCKET_NAME");
 }
 
 export function getR2Client() {

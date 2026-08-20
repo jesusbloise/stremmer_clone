@@ -1,17 +1,21 @@
-
-
 import { Pool } from "pg";
 
+function getRequiredEnv(name: string) {
+  const value = process.env[name];
+
+  if (!value) {
+    throw new Error(`Missing ${name}`);
+  }
+
+  return value;
+}
 
 const pool = new Pool({
-  user: process.env.PGUSER || "postgres",
-  host: process.env.PGHOST || "localhost",
-  database: process.env.PGDATABASE || "atomica_stremmer",
-  password: process.env.PGPASSWORD || "atomica",
-  port: Number(process.env.PGPORT) || 5432,
+  user: getRequiredEnv("PGUSER"),
+  host: getRequiredEnv("PGHOST"),
+  database: getRequiredEnv("PGDATABASE"),
+  password: getRequiredEnv("PGPASSWORD"),
+  port: Number(process.env.PGPORT || 5432),
 });
-
-
-// export { default } from "./server/db/pool";
 
 export default pool;

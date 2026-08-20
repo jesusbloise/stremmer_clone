@@ -4,13 +4,11 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 /**
- * ✅ Host canónico (EL MISMO que tienes en Google OAuth)
- * JavaScript origins:
- *   https://atomica-stremmer-web-23864640850.us-central1.run.app
- * Redirect URI:
- *   https://atomica-stremmer-web-23864640850.us-central1.run.app/api/auth/callback/google
+ * Host canónico configurable mediante CANONICAL_HOST.
+ * Debe corresponder al dominio o URL de Cloud Run
+ * configurado para esta instalación.
  */
-const CANONICAL_HOST = "atomica-stremmer-web-23864640850.us-central1.run.app";
+const CANONICAL_HOST = process.env.CANONICAL_HOST?.trim().toLowerCase() || "";
 
 /**
  * ⚠️ Middleware corre en Edge. No uses 'jsonwebtoken' aquí.
@@ -29,7 +27,7 @@ const isLocalHost =
   host.startsWith("127.0.0.1:") ||
   host.startsWith("192.168.");
 
-if (host && host !== CANONICAL_HOST && !isLocalHost) {
+if (CANONICAL_HOST && host && host !== CANONICAL_HOST && !isLocalHost) {
   const url = req.nextUrl.clone();
   url.host = CANONICAL_HOST;
   url.protocol = "https:";

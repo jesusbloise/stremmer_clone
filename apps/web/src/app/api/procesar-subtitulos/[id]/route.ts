@@ -58,11 +58,18 @@ async function startTranscriptionJob(
 ) {
   const projectId =
     process.env.GOOGLE_CLOUD_PROJECT ||
-    process.env.GCLOUD_PROJECT ||
-    "atomica-stremmer-prod";
+    process.env.GCLOUD_PROJECT;
+
+  if (!projectId) {
+    throw new Error("Missing GOOGLE_CLOUD_PROJECT or GCLOUD_PROJECT");
+  }
 
   const region = "us-central1";
-  const jobName = "atomica-transcription";
+  const jobName = process.env.TRANSCRIPTION_JOB_NAME;
+
+  if (!jobName) {
+    throw new Error("Missing TRANSCRIPTION_JOB_NAME");
+  }
 
   const auth = new GoogleAuth({
     scopes: [
@@ -205,13 +212,13 @@ export async function POST(
         r2Path
       );
 
-    /*
+        /*
      * IMPORTANTE:
      * Whisper ya NO se ejecuta dentro
-     * de atomica-stremmer-web.
+     * de la aplicación web.
      *
      * Solamente disparamos el Job
-     * atomica-transcription.
+     * de transcripción configurado.
      */
     const execution =
       await startTranscriptionJob(
