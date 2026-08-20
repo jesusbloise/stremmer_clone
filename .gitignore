@@ -7,3 +7,8 @@
 out/
 dist/
 .DS_Store
+
+# Archivos locales heredados / temporales
+*.bak-30gb
+privacy-audit.txt
+servicio.yaml
