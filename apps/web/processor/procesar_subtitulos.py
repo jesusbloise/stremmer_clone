@@ -3,17 +3,28 @@ import sys
 import math
 import tempfile
 import subprocess
-from unittest import result
 import requests
 import psycopg2
 import whisper
 from typing import Optional
 
+
+def required_env(name: str) -> str:
+    value = os.getenv(name)
+
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable: {name}"
+        )
+
+    return value
+
+
 DB_CONFIG = {
-    "dbname": os.getenv("PGDATABASE", "atomica"),
-    "user": os.getenv("PGUSER", "postgres"),
-    "password": os.getenv("PGPASSWORD", ""),
-    "host": os.getenv("PGHOST", "localhost"),
+    "dbname": required_env("PGDATABASE"),
+    "user": required_env("PGUSER"),
+    "password": required_env("PGPASSWORD"),
+    "host": required_env("PGHOST"),
     "port": os.getenv("PGPORT", "5432"),
 }
 
