@@ -49,7 +49,7 @@ useEffect(() => {
             transition={{ duration: 0.8, ease: "easeInOut" }}
           >
             <Image
-              src="/Logo Stock Library_01-2.png"
+              src="/Logo_Stock_Library@2x.png"
               alt="ATOMICA"
               width={220}
               height={220}

@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
-import logoUDD from "@/../public/Logo Stock Library_01-2.png";
+import logoUDD from "@/../public/Logo_Stock_Library@2x.png";
 
 type Props = {
   inviteToken: string;

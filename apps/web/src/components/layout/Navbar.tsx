@@ -294,7 +294,7 @@ const notificationsRef =
   className="order-1 flex h-16 shrink-0 items-center overflow-visible"
 >
   <Image
-    src="/Logo Stock Library_01-2.png"
+    src="/Logo_Stock_Library@2x.png"
     alt="ATOMICA"
     width={560}
     height={112}
