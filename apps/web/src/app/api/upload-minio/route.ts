@@ -451,6 +451,7 @@ async function createUploadWithPrivacy(
           category,
           subcategory,
           r2_path,
+          storage_provider,
           created_by_id,
           visibility,
           requires_approval,
@@ -472,7 +473,8 @@ async function createUploadWithPrivacy(
           $11,
           $12,
           $13,
-          $14
+          $14,
+          $15
         )
       `,
       [
@@ -486,6 +488,7 @@ async function createUploadWithPrivacy(
         input.category,
         input.subcategory,
         input.r2Path,
+        "r2",
         input.createdById,
         input.visibility,
         input.requiresApproval,
