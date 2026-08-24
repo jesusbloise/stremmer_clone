@@ -126,10 +126,9 @@ function resolvePlayableSrc(url?: string | null) {
   if (s.startsWith("https://storage.googleapis.com/")) return s;
   if (s.startsWith("https://")) return s;
 
-  if (s.startsWith("http://")) {
-    return `/api/proxy?url=${encodeURIComponent(s)}`;
-  }
-
+if (s.startsWith("http://")) {
+  return s;
+}
   return s;
 }
 function previewUrl(u?: string | null) {

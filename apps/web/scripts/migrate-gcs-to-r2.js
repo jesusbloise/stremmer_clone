@@ -36,7 +36,7 @@ async function main() {
   const accountId = required("R2_ACCOUNT_ID");
   const accessKeyId = required("R2_ACCESS_KEY_ID");
   const secretAccessKey = required("R2_SECRET_ACCESS_KEY");
-  const bucket = process.env.R2_BUCKET_NAME || "atomica-originals-r2";
+  const bucket = required("R2_BUCKET_NAME");
 
   const r2 = new S3Client({
     region: "auto",
