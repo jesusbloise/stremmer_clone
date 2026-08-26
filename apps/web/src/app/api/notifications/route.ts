@@ -108,24 +108,62 @@ export async function GET(req: NextRequest) {
 
     const notificationsResult = await pool.query(
       `
-      SELECT
-        id,
-        type,
-        title,
-        message,
-        upload_id,
-        action_url,
-        metadata,
-        created_at,
-        read_at,
-        banner_dismissed_at,
-        resolved_at
-      FROM notifications
-      WHERE user_id = $1
-        AND resolved_at IS NULL
-      ORDER BY created_at DESC
-      LIMIT 100
-      `,
+  SELECT
+    notification.id,
+    notification.type,
+    notification.title,
+    notification.message,
+    notification.upload_id,
+    notification.action_url,
+
+    CASE
+      WHEN
+        notification.type = 'RESTRICTED_UPLOAD_SHARED'
+        AND notification.upload_id IS NOT NULL
+      THEN
+        jsonb_set(
+          COALESCE(
+            notification.metadata,
+            '{}'::jsonb
+          ),
+          '{fileName}',
+          to_jsonb(
+            COALESCE(
+              NULLIF(
+                BTRIM(ficha.titulo),
+                ''
+              ),
+              notification.metadata ->> 'fileName',
+              notification.message,
+              'Archivo compartido'
+            )
+          ),
+          TRUE
+        )
+
+      ELSE notification.metadata
+    END AS metadata,
+
+    notification.created_at,
+    notification.read_at,
+    notification.banner_dismissed_at,
+    notification.resolved_at
+
+  FROM notifications notification
+
+  LEFT JOIN ficha_tecnica ficha
+    ON ficha.upload_id =
+      notification.upload_id
+
+  WHERE
+    notification.user_id = $1
+    AND notification.resolved_at IS NULL
+
+  ORDER BY
+    notification.created_at DESC
+
+  LIMIT 100
+  `,
       [userId]
     );
 
