@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const secret = generateSecret();
 
     const otpAuthUrl = generateURI({
-      issuer: "Atomica Stremmer",
+      issuer: "Stremmer",
       label: challenge.email,
       secret,
     });
