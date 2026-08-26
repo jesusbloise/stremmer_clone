@@ -183,6 +183,11 @@ export default function NotificationsPage() {
                 const unreadItem =
                   !item.read_at;
 
+                  const displayMessage =
+  item.type === "RESTRICTED_UPLOAD_SHARED"
+    ? `${item.metadata?.fileName || item.message} fue compartido contigo de forma restringida.`
+    : item.message;
+    
                 const Icon =
                   getIcon(item.type);
 
@@ -229,7 +234,7 @@ export default function NotificationsPage() {
                       </div>
 
                       <p className="mt-1 text-sm leading-6 text-zinc-400">
-                        {item.message}
+                        {displayMessage}
                       </p>
 
                       <div className="mt-3 flex flex-wrap items-center gap-3">

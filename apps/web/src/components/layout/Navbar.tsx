@@ -479,6 +479,11 @@ const notificationsRef =
             notifications.slice(0, 8).map((item) => {
               const unread = !item.read_at;
 
+              const displayMessage =
+  item.type === "RESTRICTED_UPLOAD_SHARED"
+    ? `${item.metadata?.fileName || item.message} fue compartido contigo de forma restringida.`
+    : item.message;
+
               const Icon =
                 item.type === "TWO_FACTOR_PENDING"
                   ? ShieldCheck
@@ -558,7 +563,7 @@ const notificationsRef =
                     </div>
 
                     <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-400">
-                      {item.message}
+                      {displayMessage}
                     </p>
                   </div>
                 </button>
