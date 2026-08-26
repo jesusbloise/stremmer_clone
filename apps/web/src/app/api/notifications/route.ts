@@ -151,9 +151,9 @@ export async function GET(req: NextRequest) {
 
   FROM notifications notification
 
-  LEFT JOIN ficha_tecnica ficha
-    ON ficha.upload_id =
-      notification.upload_id
+ LEFT JOIN ficha_tecnica ficha
+  ON ficha.upload_id::text =
+    notification.upload_id::text
 
   WHERE
     notification.user_id = $1
