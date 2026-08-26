@@ -6,14 +6,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   Search,
-  Filter,
   ChevronDown,
   Bell,
   ShieldCheck,
   LockKeyhole,
 } from "lucide-react";
-import { navEmitFilter, navEmitSearch, navEmitToggleSelect } from "./navBus";
-import type { FilterKey } from "@/components/UploadVideo/types";
+import { navEmitSearch, navEmitToggleSelect } from "./navBus";
 
 type Me =
   | null
@@ -62,7 +60,6 @@ export default function Navbar() {
   // qVisible: lo que escribe el usuario (con mayúsculas/acentos)
   // qNorm: versión normalizada, la que usamos para buscar y poner en la URL
   const [qVisible, setQVisible] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
 
   const [session, setSession] = useState<Me>(null);
@@ -195,10 +192,7 @@ useEffect(() => {
     const urlQ = searchParams.get("q") ?? "";
     setQVisible(urlQ);
 
-    const f = (searchParams.get("filter") || "") as FilterKey | "";
-    if (f === "con_subtitulos" || f === "sin_subtitulos" || f === "hoy" || f === "") {
-      navEmitFilter((f || null) as FilterKey);
-    }
+   
   }, [pathname, searchParams]);
 
   // debounce SOLO en /explorar, emitiendo SIEMPRE la query normalizada
@@ -228,22 +222,7 @@ useEffect(() => {
     }
   }
 
-  const applyFilter = (key: FilterKey) => {
-    if (pathname !== "/explorar") {
-      const p = new URLSearchParams();
-      const termNorm = qNorm;
-      if (termNorm) p.set("q", termNorm);
-      if (key) p.set("filter", key);
-      router.push(`/explorar?${p.toString()}`);
-    } else {
-      navEmitFilter(key);
-      const p = new URLSearchParams(searchParams.toString());
-      if (key) p.set("filter", key);
-      else p.delete("filter");
-      router.replace(`/explorar?${p.toString()}`);
-    }
-    setMenuOpen(false);
-  };
+  
 
   // --- Avatar dropdown: close on outside / esc
   const avatarRef =
@@ -271,9 +250,8 @@ const notificationsRef =
 };
     const onEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setAvatarOpen(false);
-        setMenuOpen(false);
-        setNotificationsOpen(false);
+     setAvatarOpen(false);
+    setNotificationsOpen(false);
       }
     };
     document.addEventListener("click", onDocClick);
@@ -345,42 +323,14 @@ const notificationsRef =
             <button
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-zinc-700 text-sm text-zinc-200 hover:bg-zinc-800/60"
               onClick={() => {
-                setMenuOpen((v) => !v);
-                setAvatarOpen(false);
+              setAvatarOpen((v) => !v);
+setNotificationsOpen(false);
               }}
             >
-              <Filter className="h-4 w-4" />
-              Filtros
+             
             </button>
 
-            {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 rounded-md border border-zinc-700 bg-zinc-900 shadow-lg z-50">
-                <button
-                  onClick={() => applyFilter("con_subtitulos")}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-zinc-800"
-                >
-                  Con subtítulos
-                </button>
-                <button
-                  onClick={() => applyFilter("sin_subtitulos")}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-zinc-800"
-                >
-                  Sin subtítulos
-                </button>
-                <button
-                  onClick={() => applyFilter("hoy")}
-                  className="block w-full text-left px-3 py-2 text-sm hover:bg-zinc-800"
-                >
-                  Subidos hoy
-                </button>
-                <button
-                  onClick={() => applyFilter(null)}
-                  className="block w-full text-left px-3 py-2 text-sm text-red-300 hover:bg-zinc-800"
-                >
-                  Resetear filtros
-                </button>
-              </div>
-            )}
+            
           </div>
 
           {/* Seleccionar (oculto a estudiante) */}
@@ -419,7 +369,7 @@ const notificationsRef =
       onClick={() => {
         setNotificationsOpen((value) => !value);
         setAvatarOpen(false);
-        setMenuOpen(false);
+
 
         if (!notificationsOpen) {
           loadNotifications();
@@ -592,7 +542,7 @@ const notificationsRef =
                 className="inline-flex items-center gap-1.5 px-2 py-1.5 rounded-md hover:bg-zinc-800/60"
                 onClick={() => {
                   setAvatarOpen((v) => !v);
-                  setMenuOpen(false);
+                  
                   setNotificationsOpen(false);
                 }}
                 aria-haspopup="menu"

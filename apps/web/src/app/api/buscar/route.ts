@@ -4,18 +4,23 @@ import pool from "@/db";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function normalizeTextSQL(field: string) {
-  return `lower(unaccent(coalesce(${field}, '')))`;
-}
-
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const q = (searchParams.get("q") || "").trim();
+
+  const q = String(
+    searchParams.get("q") || ""
+  ).trim();
 
   if (!q) {
     return NextResponse.json(
-      { results: [] },
-      { headers: { "cache-control": "no-store" } }
+      {
+        results: [],
+      },
+      {
+        headers: {
+          "cache-control": "no-store",
+        },
+      }
     );
   }
 
@@ -27,132 +32,316 @@ export async function GET(req: Request) {
           u.id::text AS id,
           u.file_name,
           ft.titulo,
-          COALESCE(NULLIF(ft.titulo, ''), u.file_name) AS display_name,
+
+          COALESCE(
+            NULLIF(ft.titulo, ''),
+            u.file_name
+          ) AS display_name,
+
           u.file_path,
           u.file_key,
           u.uploaded_at,
           u.category,
           u.subcategory,
           u.thumbnail_url,
+
           COALESCE(
             u.tipo,
             CASE
-              WHEN lower(split_part(u.file_name, '.', -1)) IN ('mp4','mov','mkv','webm','m4v','avi') THEN 'video'
-              WHEN lower(split_part(u.file_name, '.', -1)) IN ('pdf','docx','doc','txt','md','csv','log','srt','vtt') THEN 'documento'
+              WHEN lower(
+                split_part(
+                  u.file_name,
+                  '.',
+                  -1
+                )
+              ) IN (
+                'mp4',
+                'mov',
+                'mkv',
+                'webm',
+                'm4v',
+                'avi'
+              )
+              THEN 'video'
+
+              WHEN lower(
+                split_part(
+                  u.file_name,
+                  '.',
+                  -1
+                )
+              ) IN (
+                'pdf',
+                'docx',
+                'doc',
+                'txt',
+                'md',
+                'csv',
+                'log',
+                'srt',
+                'vtt'
+              )
+              THEN 'documento'
+
               ELSE 'desconocido'
             END
-          ) AS tipo
+          ) AS tipo,
+
+          /*
+           * Texto correspondiente a la ficha.
+           */
+          lower(
+            unaccent(
+              concat_ws(
+                ' ',
+                u.file_name,
+                ft.titulo,
+                u.category,
+                u.subcategory,
+                ft.marca,
+                ft.agencia,
+                ft.productora,
+                ft.productora_ficha,
+                ft.contacto,
+                ft.oficina,
+                ft.estudio,
+                ft.director,
+                ft.productor,
+                ft.produccion,
+                ft.corporativo,
+                ft.nuevos_negocios,
+                array_to_string(
+                  ft.tipo,
+                  ' '
+                )
+              )
+            )
+          ) AS ficha_text
+
         FROM uploads u
-        LEFT JOIN ficha_tecnica ft ON ft.upload_id::text = u.id::text
-        WHERE u.is_deleted IS NOT TRUE
+
+        LEFT JOIN ficha_tecnica ft
+          ON ft.upload_id::text =
+            u.id::text
+
+        WHERE
+          u.is_deleted IS NOT TRUE
       ),
 
-      matches AS (
-        SELECT DISTINCT ON (b.id)
-          b.id,
-          b.file_name,
-          b.titulo,
-          b.display_name,
-          b.tipo,
-          b.file_path,
-          b.file_key,
-          b.uploaded_at,
-          b.category,
-          b.subcategory,
-          b.thumbnail_url,
-          'ficha' AS matched_from,
+      subtitles AS (
+        SELECT
+          video_id::text AS id,
+
+          string_agg(
+            COALESCE(text, ''),
+            ' '
+            ORDER BY time_start
+          ) AS subtitle_original,
+
+          lower(
+            unaccent(
+              string_agg(
+                COALESCE(text, ''),
+                ' '
+                ORDER BY time_start
+              )
+            )
+          ) AS subtitle_text
+
+        FROM video_subtitulos
+
+        GROUP BY video_id::text
+      ),
+
+      documents AS (
+        SELECT
+          upload_id::text AS id,
+
+          string_agg(
+            COALESCE(texto_extraido, ''),
+            ' '
+          ) AS document_original,
+
+          lower(
+            unaccent(
+              string_agg(
+                COALESCE(texto_extraido, ''),
+                ' '
+              )
+            )
+          ) AS document_text
+
+        FROM documentos_texto
+
+        GROUP BY upload_id::text
+      ),
+
+      searchable AS (
+        SELECT
+          b.*,
+
           COALESCE(
-            NULLIF(ft.titulo, ''),
-            NULLIF(ft.marca, ''),
-            NULLIF(ft.agencia, ''),
-            NULLIF(ft.productora, ''),
-            NULLIF(ft.productora_ficha, ''),
-            NULLIF(ft.contacto, ''),
-            NULLIF(ft.oficina, ''),
-            NULLIF(ft.estudio, ''),
-            NULLIF(ft.director, ''),
-            NULLIF(ft.productor, ''),
-            NULLIF(ft.produccion, ''),
-            NULLIF(ft.corporativo, ''),
-            NULLIF(ft.nuevos_negocios, ''),
-            NULL
-          ) AS snippet
+            b.ficha_text,
+            ''
+          ) AS normalized_ficha,
+
+          COALESCE(
+            s.subtitle_text,
+            ''
+          ) AS normalized_subtitles,
+
+          COALESCE(
+            d.document_text,
+            ''
+          ) AS normalized_document,
+
+          concat_ws(
+            ' ',
+            COALESCE(
+              b.ficha_text,
+              ''
+            ),
+            COALESCE(
+              s.subtitle_text,
+              ''
+            ),
+            COALESCE(
+              d.document_text,
+              ''
+            )
+          ) AS search_text,
+
+          s.subtitle_original,
+          d.document_original
+
         FROM base b
-        LEFT JOIN ficha_tecnica ft ON ft.upload_id::text = b.id
+
+        LEFT JOIN subtitles s
+          ON s.id = b.id
+
+        LEFT JOIN documents d
+          ON d.id = b.id
+      ),
+
+      filtered AS (
+        SELECT
+          s.*,
+
+          /*
+           * Identificamos aproximadamente
+           * de dónde vino el resultado.
+           *
+           * Si las palabras están repartidas
+           * entre varias fuentes usamos
+           * "combinado".
+           */
+          CASE
+            WHEN NOT EXISTS (
+              SELECT 1
+
+              FROM unnest(
+                regexp_split_to_array(
+                  trim(
+                    lower(
+                      unaccent($1)
+                    )
+                  ),
+                  '[[:space:]]+'
+                )
+              ) AS token
+
+              WHERE
+                token <> ''
+
+                AND s.normalized_ficha
+                  NOT LIKE
+                  '%' || token || '%'
+            )
+            THEN 'ficha'
+
+            WHEN NOT EXISTS (
+              SELECT 1
+
+              FROM unnest(
+                regexp_split_to_array(
+                  trim(
+                    lower(
+                      unaccent($1)
+                    )
+                  ),
+                  '[[:space:]]+'
+                )
+              ) AS token
+
+              WHERE
+                token <> ''
+
+                AND s.normalized_subtitles
+                  NOT LIKE
+                  '%' || token || '%'
+            )
+            THEN 'subtitulos'
+
+            WHEN NOT EXISTS (
+              SELECT 1
+
+              FROM unnest(
+                regexp_split_to_array(
+                  trim(
+                    lower(
+                      unaccent($1)
+                    )
+                  ),
+                  '[[:space:]]+'
+                )
+              ) AS token
+
+              WHERE
+                token <> ''
+
+                AND s.normalized_document
+                  NOT LIKE
+                  '%' || token || '%'
+            )
+            THEN 'documento'
+
+            ELSE 'combinado'
+          END AS matched_from
+
+        FROM searchable s
+
         WHERE
-          ${normalizeTextSQL("b.file_name")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("b.display_name")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("b.category")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("b.subcategory")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.titulo")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.marca")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.agencia")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.productora")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.productora_ficha")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.contacto")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.oficina")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.estudio")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.director")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.productor")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.produccion")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.corporativo")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR ${normalizeTextSQL("ft.nuevos_negocios")} LIKE '%' || lower(unaccent($1)) || '%'
-          OR lower(unaccent(coalesce(array_to_string(ft.tipo, ' '), ''))) LIKE '%' || lower(unaccent($1)) || '%'
+          /*
+           * Regla principal:
+           *
+           * TODAS las palabras buscadas
+           * deben aparecer en alguna parte
+           * del contenido del MISMO archivo.
+           */
+          NOT EXISTS (
+            SELECT 1
 
-        UNION ALL
+            FROM unnest(
+              regexp_split_to_array(
+                trim(
+                  lower(
+                    unaccent($1)
+                  )
+                ),
+                '[[:space:]]+'
+              )
+            ) AS token
 
-        SELECT DISTINCT ON (b.id)
-          b.id,
-          b.file_name,
-          b.titulo,
-          b.display_name,
-          b.tipo,
-          b.file_path,
-          b.file_key,
-          b.uploaded_at,
-          b.category,
-          b.subcategory,
-          b.thumbnail_url,
-          'subtitulos' AS matched_from,
-          substring(
-            s.text
-            from greatest(position(lower($1) in lower(s.text)) - 40, 1)
-            for 160
-          ) AS snippet
-        FROM base b
-        JOIN video_subtitulos s ON s.video_id::text = b.id
-        WHERE
-          b.tipo = 'video'
-          AND lower(unaccent(coalesce(s.text, ''))) LIKE '%' || lower(unaccent($1)) || '%'
+            WHERE
+              token <> ''
 
-        UNION ALL
-
-        SELECT DISTINCT ON (b.id)
-          b.id,
-          b.file_name,
-          b.titulo,
-          b.display_name,
-          b.tipo,
-          b.file_path,
-          b.file_key,
-          b.uploaded_at,
-          b.category,
-          b.subcategory,
-          b.thumbnail_url,
-          'documento' AS matched_from,
-          substring(
-            dt.texto_extraido
-            from greatest(position(lower($1) in lower(dt.texto_extraido)) - 40, 1)
-            for 160
-          ) AS snippet
-        FROM base b
-        JOIN documentos_texto dt ON dt.upload_id::text = b.id
-        WHERE
-          b.tipo = 'documento'
-          AND lower(unaccent(coalesce(dt.texto_extraido, ''))) LIKE '%' || lower(unaccent($1)) || '%'
+              AND s.search_text
+                NOT LIKE
+                '%' || token || '%'
+          )
       )
 
-      SELECT DISTINCT ON (id)
+      SELECT
         id,
         file_name,
         titulo,
@@ -165,38 +354,125 @@ export async function GET(req: Request) {
         subcategory,
         thumbnail_url,
         matched_from,
-        snippet
-      FROM matches
-      ORDER BY id, uploaded_at DESC
+
+        CASE
+          WHEN
+            matched_from = 'subtitulos'
+            OR matched_from = 'combinado'
+          THEN
+            LEFT(
+              COALESCE(
+                subtitle_original,
+                display_name
+              ),
+              250
+            )
+
+          WHEN matched_from = 'documento'
+          THEN
+            LEFT(
+              COALESCE(
+                document_original,
+                display_name
+              ),
+              250
+            )
+
+          ELSE
+            display_name
+        END AS snippet
+
+      FROM filtered
+
+      ORDER BY
+        uploaded_at DESC
+
       LIMIT 100
       `,
       [q]
     );
 
-    const results = rows.map((r: any) => ({
-      id: r.id,
-      file_name: r.file_name || "sin_nombre",
-      display_name: r.display_name || r.titulo || r.file_name || "sin_nombre",
-      titulo: r.titulo || null,
-      name: r.display_name || r.titulo || r.file_name || "sin_nombre",
-      file_path: r.file_path,
-      file_key: r.file_key,
-      url: r.file_path,
-      tipo: r.tipo,
-      category: r.category,
-      subcategory: r.subcategory,
-      thumbnail_url: r.thumbnail_url,
-      matched_from: r.matched_from,
-      subtituloTexto: (r.snippet || "").trim(),
-      uploaded_at: r.uploaded_at,
-    }));
+    const results = rows.map(
+      (r: any) => ({
+        id: r.id,
+
+        file_name:
+          r.file_name ||
+          "sin_nombre",
+
+        display_name:
+          r.display_name ||
+          r.titulo ||
+          r.file_name ||
+          "sin_nombre",
+
+        titulo:
+          r.titulo || null,
+
+        name:
+          r.display_name ||
+          r.titulo ||
+          r.file_name ||
+          "sin_nombre",
+
+        file_path:
+          r.file_path,
+
+        file_key:
+          r.file_key,
+
+        url:
+          r.file_path,
+
+        tipo:
+          r.tipo,
+
+        category:
+          r.category,
+
+        subcategory:
+          r.subcategory,
+
+        thumbnail_url:
+          r.thumbnail_url,
+
+        matched_from:
+          r.matched_from,
+
+        subtituloTexto:
+          (
+            r.snippet || ""
+          ).trim(),
+
+        uploaded_at:
+          r.uploaded_at,
+      })
+    );
 
     return NextResponse.json(
-      { results },
-      { headers: { "cache-control": "no-store" } }
+      {
+        results,
+      },
+      {
+        headers: {
+          "cache-control":
+            "no-store",
+        },
+      }
     );
   } catch (e: any) {
-    console.error("Error en /api/buscar:", e?.message || e);
-    return NextResponse.json({ error: "Error interno" }, { status: 500 });
+    console.error(
+      "Error en /api/buscar:",
+      e?.message || e
+    );
+
+    return NextResponse.json(
+      {
+        error: "Error interno",
+      },
+      {
+        status: 500,
+      }
+    );
   }
 }
