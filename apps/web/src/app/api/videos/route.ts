@@ -155,8 +155,8 @@ export async function GET(req: Request) {
       (
         u.tipo = 'documento'
         OR ${isExt(
-          "pdf|docx|doc|txt|md|csv|log|srt|vtt"
-        )}
+      "pdf|docx|doc|txt|md|csv|log|srt|vtt"
+    )}
       )
     `;
   } else if (only === "image") {
@@ -246,6 +246,72 @@ OR EXISTS (
     AND permission.target_type = 'GROUP'
     AND gm.user_id::text = $1::text
 )
+    OR EXISTS (
+  SELECT 1
+
+  FROM access_rules rule
+
+  INNER JOIN user_group_members gm
+    ON gm.group_id::text =
+      rule.target_id::text
+
+  WHERE
+    rule.target_type = 'GROUP'
+
+    AND gm.user_id::text =
+      $1::text
+
+    AND (
+      (
+        rule.resource_type = 'UPLOAD'
+        AND rule.resource_id::text =
+          u.id::text
+      )
+
+      OR (
+        rule.resource_type = 'CATEGORY'
+
+        AND EXISTS (
+          SELECT 1
+
+          FROM categories category_rule
+
+          WHERE
+            category_rule.id::text =
+              rule.resource_id::text
+
+            AND LOWER(category_rule.slug) =
+              LOWER(COALESCE(u.category, ''))
+        )
+      )
+
+      OR (
+        rule.resource_type = 'SUBCATEGORY'
+
+        AND EXISTS (
+          SELECT 1
+
+          FROM subcategories subcategory_rule
+
+          WHERE
+            subcategory_rule.id::text =
+              rule.resource_id::text
+
+            AND LOWER(
+              BTRIM(subcategory_rule.label)
+            ) =
+              LOWER(
+                BTRIM(
+                  COALESCE(
+                    u.subcategory,
+                    ''
+                  )
+                )
+              )
+        )
+      )
+    )
+)
         )
 
       ORDER BY u.uploaded_at DESC NULLS LAST
@@ -265,7 +331,7 @@ OR EXISTS (
 
       using_cloudflare_stream: Boolean(
         row.cf_stream_ready &&
-          row.cf_stream_playback_url
+        row.cf_stream_playback_url
       ),
 
       using_r2: Boolean(row.r2_path),

@@ -89,9 +89,9 @@ type RowUploadBase = {
   category?: string | null;
   subcategory?: string | null;
   cf_stream_uid?: string | null;
-cf_stream_status?: string | null;
-cf_stream_ready?: boolean | null;
-cf_stream_playback_url?: string | null;
+  cf_stream_status?: string | null;
+  cf_stream_ready?: boolean | null;
+  cf_stream_playback_url?: string | null;
 };
 
 type RowUploadWithMore = RowUploadBase & {
@@ -266,33 +266,33 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   const { id } = await context.params;
-const currentUser = getAuthenticatedUser(req);
+  const currentUser = getAuthenticatedUser(req);
 
-const { searchParams } = new URL(req.url);
+  const { searchParams } = new URL(req.url);
 
-const rawShareToken =
-  String(searchParams.get("share") || "").trim();
+  const rawShareToken =
+    String(searchParams.get("share") || "").trim();
 
-let hasValidShareToken = false;
+  let hasValidShareToken = false;
 
-if (rawShareToken) {
-  const tokenHash =
-    hashShareToken(rawShareToken);
+  if (rawShareToken) {
+    const tokenHash =
+      hashShareToken(rawShareToken);
 
-  const SHOWCASE_VIDEO_IDS = [
-    "5909f5b1-20b8-4a6e-aca3-bd70870f6513",
-    "0f639512-5ec9-4266-ab0a-abcbce96fb38",
-    "eeb2c14c-2f68-4f7b-b477-d32b2a7a6139",
-    "ce49f9e7-3c7f-49bc-89f2-31e48760a5e0",
-  ];
+    const SHOWCASE_VIDEO_IDS = [
+      "5909f5b1-20b8-4a6e-aca3-bd70870f6513",
+      "0f639512-5ec9-4266-ab0a-abcbce96fb38",
+      "eeb2c14c-2f68-4f7b-b477-d32b2a7a6139",
+      "ce49f9e7-3c7f-49bc-89f2-31e48760a5e0",
+    ];
 
-  const sourceUploadId =
-    String(
-      searchParams.get("source") || id
-    ).trim();
+    const sourceUploadId =
+      String(
+        searchParams.get("source") || id
+      ).trim();
 
-  const shareResult = await pool.query(
-    `
+    const shareResult = await pool.query(
+      `
     UPDATE upload_share_links
     SET
       last_accessed_at = NOW(),
@@ -304,29 +304,29 @@ if (rawShareToken) {
       AND expires_at > NOW()
     RETURNING id
     `,
-    [sourceUploadId, tokenHash]
-  );
-
-  const tokenBelongsToSource =
-    Boolean(shareResult.rowCount);
-
-  const isOriginalSharedUpload =
-    sourceUploadId === id;
-
-  const isAllowedShowcaseUpload =
-    SHOWCASE_VIDEO_IDS.includes(id);
-
-  hasValidShareToken =
-    tokenBelongsToSource &&
-    (
-      isOriginalSharedUpload ||
-      isAllowedShowcaseUpload
+      [sourceUploadId, tokenHash]
     );
-}
 
-try {
-  const accessQuery = await pool.query<UploadAccessRow>(
-  `
+    const tokenBelongsToSource =
+      Boolean(shareResult.rowCount);
+
+    const isOriginalSharedUpload =
+      sourceUploadId === id;
+
+    const isAllowedShowcaseUpload =
+      SHOWCASE_VIDEO_IDS.includes(id);
+
+    hasValidShareToken =
+      tokenBelongsToSource &&
+      (
+        isOriginalSharedUpload ||
+        isAllowedShowcaseUpload
+      );
+  }
+
+  try {
+    const accessQuery = await pool.query<UploadAccessRow>(
+      `
   SELECT
     COALESCE(u.visibility, 'PUBLIC') AS visibility,
     u.created_by_id,
@@ -352,6 +352,73 @@ try {
         AND permission.target_type = 'GROUP'
         AND gm.user_id::text = $2::text
     )
+
+    OR EXISTS (
+  SELECT 1
+
+  FROM access_rules rule
+
+  INNER JOIN user_group_members gm
+    ON gm.group_id::text =
+      rule.target_id::text
+
+  WHERE
+    rule.target_type = 'GROUP'
+
+    AND gm.user_id::text =
+      $2::text
+
+    AND (
+      (
+        rule.resource_type = 'UPLOAD'
+        AND rule.resource_id::text =
+          u.id::text
+      )
+
+      OR (
+        rule.resource_type = 'CATEGORY'
+
+        AND EXISTS (
+          SELECT 1
+
+          FROM categories category_rule
+
+          WHERE
+            category_rule.id::text =
+              rule.resource_id::text
+
+            AND LOWER(category_rule.slug) =
+              LOWER(COALESCE(u.category, ''))
+        )
+      )
+
+      OR (
+        rule.resource_type = 'SUBCATEGORY'
+
+        AND EXISTS (
+          SELECT 1
+
+          FROM subcategories subcategory_rule
+
+          WHERE
+            subcategory_rule.id::text =
+              rule.resource_id::text
+
+            AND LOWER(
+              BTRIM(subcategory_rule.label)
+            ) =
+              LOWER(
+                BTRIM(
+                  COALESCE(
+                    u.subcategory,
+                    ''
+                  )
+                )
+              )
+        )
+      )
+    )
+)
   )
 END AS is_assigned
   FROM uploads u
@@ -360,8 +427,8 @@ END AS is_assigned
     AND u.is_deleted IS NOT TRUE
   LIMIT 1
   `,
-  [id, currentUser?.id ?? null]
-);
+      [id, currentUser?.id ?? null]
+    );
     const access = accessQuery.rows[0];
 
     if (!access) {
@@ -371,26 +438,26 @@ END AS is_assigned
       );
     }
 
-  const isOwner =
-  Boolean(currentUser) &&
-  access.created_by_id?.toString() ===
-    currentUser?.id.toString();
+    const isOwner =
+      Boolean(currentUser) &&
+      access.created_by_id?.toString() ===
+      currentUser?.id.toString();
 
-const isSuperAdmin =
-  currentUser?.role === "SUPER_ADMIN";
+    const isSuperAdmin =
+      currentUser?.role === "SUPER_ADMIN";
 
-const canAuthenticatedUserView =
-  Boolean(currentUser) &&
-  (
-    access.visibility === "PUBLIC" ||
-    isOwner ||
-    isSuperAdmin ||
-    access.is_assigned
-  );
+    const canAuthenticatedUserView =
+      Boolean(currentUser) &&
+      (
+        access.visibility === "PUBLIC" ||
+        isOwner ||
+        isSuperAdmin ||
+        access.is_assigned
+      );
 
-const canView =
-  hasValidShareToken ||
-  canAuthenticatedUserView;
+    const canView =
+      hasValidShareToken ||
+      canAuthenticatedUserView;
 
     if (!canView) {
       return NextResponse.json(
@@ -427,19 +494,19 @@ FROM uploads
       const r = q2.rows[0] || null;
 
       if (r) {
-  row = {
-    ...r,
-    content_type: null,
-    streaming_path: null,
-    vimeo_id: null,
-    duration_sec: null,
-    thumbnail_url: null,
-    cf_stream_uid: r.cf_stream_uid ?? null,
-    cf_stream_status: r.cf_stream_status ?? null,
-    cf_stream_ready: r.cf_stream_ready ?? null,
-    cf_stream_playback_url: r.cf_stream_playback_url ?? null,
-  };
-}
+        row = {
+          ...r,
+          content_type: null,
+          streaming_path: null,
+          vimeo_id: null,
+          duration_sec: null,
+          thumbnail_url: null,
+          cf_stream_uid: r.cf_stream_uid ?? null,
+          cf_stream_status: r.cf_stream_status ?? null,
+          cf_stream_ready: r.cf_stream_ready ?? null,
+          cf_stream_playback_url: r.cf_stream_playback_url ?? null,
+        };
+      }
     }
 
     if (!row) {
@@ -481,109 +548,109 @@ FROM uploads
 
     const finalStreamingPath = row.streaming_path || null;
 
-const preferR2 = Boolean(row.r2_path);
+    const preferR2 = Boolean(row.r2_path);
 
-const usingStreaming =
-  tipo === "video" &&
-  Boolean(finalStreamingPath) &&
-  Boolean(finalStreamingPath?.startsWith("r2://")) &&
-  !preferR2;
+    const usingStreaming =
+      tipo === "video" &&
+      Boolean(finalStreamingPath) &&
+      Boolean(finalStreamingPath?.startsWith("r2://")) &&
+      !preferR2;
 
-const playbackPath = preferR2
-  ? row.r2_path
-  : usingStreaming
-    ? finalStreamingPath
-    : row.file_path;
+    const playbackPath = preferR2
+      ? row.r2_path
+      : usingStreaming
+        ? finalStreamingPath
+        : row.file_path;
 
     const playbackContentType = usingStreaming ? "video/mp4" : contentType;
 
     let url: string | null = null;
 
     let cfStreamUid = row.cf_stream_uid ?? null;
-let cfStreamStatus = row.cf_stream_status ?? null;
-let cfStreamReady = Boolean(row.cf_stream_ready);
-let cfStreamPlaybackUrl = row.cf_stream_playback_url ?? null;
+    let cfStreamStatus = row.cf_stream_status ?? null;
+    let cfStreamReady = Boolean(row.cf_stream_ready);
+    let cfStreamPlaybackUrl = row.cf_stream_playback_url ?? null;
 
-if (tipo === "video" && cfStreamUid && !cfStreamReady) {
-  try {
-    const cf = await getCloudflareStreamVideoStatus(cfStreamUid);
+    if (tipo === "video" && cfStreamUid && !cfStreamReady) {
+      try {
+        const cf = await getCloudflareStreamVideoStatus(cfStreamUid);
 
-    cfStreamStatus = cf.status;
-    cfStreamReady = cf.ready;
-    cfStreamPlaybackUrl = cf.playbackUrl;
+        cfStreamStatus = cf.status;
+        cfStreamReady = cf.ready;
+        cfStreamPlaybackUrl = cf.playbackUrl;
 
-    await pool.query(
-      `
+        await pool.query(
+          `
       UPDATE uploads
       SET cf_stream_status = $1,
           cf_stream_ready = $2,
           cf_stream_playback_url = $3
       WHERE id = $4
       `,
-      [cfStreamStatus, cfStreamReady, cfStreamPlaybackUrl, row.id]
-    );
-  } catch (e) {
-    console.warn("No se pudo sincronizar estado Cloudflare Stream:", e);
-  }
-}
-if (tipo === "video" && cfStreamReady && cfStreamPlaybackUrl) {
-  url = cfStreamPlaybackUrl;
-}
-if (!url && preferR2 && row.r2_path) {
-  if (tipo === "video") {
-    url = await buildR2SignedUrl({
-      r2Path: row.r2_path,
-      contentType: playbackContentType,
-      fileName: row.file_name,
+          [cfStreamStatus, cfStreamReady, cfStreamPlaybackUrl, row.id]
+        );
+      } catch (e) {
+        console.warn("No se pudo sincronizar estado Cloudflare Stream:", e);
+      }
+    }
+    if (tipo === "video" && cfStreamReady && cfStreamPlaybackUrl) {
+      url = cfStreamPlaybackUrl;
+    }
+    if (!url && preferR2 && row.r2_path) {
+      if (tipo === "video") {
+        url = await buildR2SignedUrl({
+          r2Path: row.r2_path,
+          contentType: playbackContentType,
+          fileName: row.file_name,
+        });
+      } else {
+        url = `/api/r2/proxy?url=${encodeURIComponent(row.r2_path)}`;
+      }
+    }
+    console.log("PLAYBACK_URL_SELECTED", {
+      id: row.id,
+      tipo,
+      cfStreamReady,
+      cfStreamPlaybackUrl,
+      finalUrl: url,
     });
-  } else {
-    url = `/api/r2/proxy?url=${encodeURIComponent(row.r2_path)}`;
-  }
-}
-console.log("PLAYBACK_URL_SELECTED", {
-  id: row.id,
-  tipo,
-  cfStreamReady,
-  cfStreamPlaybackUrl,
-  finalUrl: url,
-});
-  if (!url) {
-  return NextResponse.json(
-    {
-      error: "Archivo no disponible en R2 ni Cloudflare Stream",
-      details: {
-        id: row.id,
-        file_path: row.file_path,
-        r2_path: row.r2_path,
-        cf_stream_ready: cfStreamReady,
-        cf_stream_playback_url: cfStreamPlaybackUrl,
-      },
-    },
-    { status: 404 }
-  );
-}
+    if (!url) {
+      return NextResponse.json(
+        {
+          error: "Archivo no disponible en R2 ni Cloudflare Stream",
+          details: {
+            id: row.id,
+            file_path: row.file_path,
+            r2_path: row.r2_path,
+            cf_stream_ready: cfStreamReady,
+            cf_stream_playback_url: cfStreamPlaybackUrl,
+          },
+        },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       {
-       upload: {
-  id: row.id,
-  tipo,
-  titulo: fichaRow?.titulo ?? null,
-  display_name: fichaRow?.titulo || row.file_name,
-  file_name: row.file_name,
+        upload: {
+          id: row.id,
+          tipo,
+          titulo: fichaRow?.titulo ?? null,
+          display_name: fichaRow?.titulo || row.file_name,
+          file_name: row.file_name,
           ext,
           content_type: playbackContentType,
           url,
           uploaded_at: row.uploaded_at,
           views: row.views ?? 0,
-        category: row.category ?? null,
-subcategory: row.subcategory ?? null,
+          category: row.category ?? null,
+          subcategory: row.subcategory ?? null,
 
-visibility: access.visibility,
-created_by_id: access.created_by_id,
-can_manage_privacy: isOwner || isSuperAdmin,
+          visibility: access.visibility,
+          created_by_id: access.created_by_id,
+          can_manage_privacy: isOwner || isSuperAdmin,
 
-ficha: mapFichaToCamel(fichaRow),
+          ficha: mapFichaToCamel(fichaRow),
           vimeo_id: row.vimeo_id ?? null,
           duration_sec: row.duration_sec ?? null,
           thumbnail_url: row.thumbnail_url ?? null,
@@ -594,13 +661,13 @@ ficha: mapFichaToCamel(fichaRow),
           playback_path: playbackPath ?? null,
           using_streaming: usingStreaming,
           using_r2: preferR2,
-          
+
           cf_stream_uid: cfStreamUid,
-cf_stream_status: cfStreamStatus,
-cf_stream_ready: cfStreamReady,
-cf_stream_playback_url: cfStreamPlaybackUrl,
-using_cloudflare_stream:
-  tipo === "video" && cfStreamReady && Boolean(cfStreamPlaybackUrl),
+          cf_stream_status: cfStreamStatus,
+          cf_stream_ready: cfStreamReady,
+          cf_stream_playback_url: cfStreamPlaybackUrl,
+          using_cloudflare_stream:
+            tipo === "video" && cfStreamReady && Boolean(cfStreamPlaybackUrl),
         },
       },
       {

@@ -186,6 +186,17 @@ type GroupPermissionsResponse = {
   uploads: GroupPermissionRule[];
   total: number;
 };
+
+type GroupPermissionUpload = {
+  id: string;
+  file_name: string | null;
+  display_name: string | null;
+  titulo: string | null;
+  tipo: string | null;
+  category: string | null;
+  subcategory: string | null;
+  uploaded_at: string | null;
+};
 /* =========================================================
    API USUARIOS
 ========================================================= */
@@ -364,6 +375,31 @@ async function fetchPermissionCategories() {
 
   return Array.isArray(result?.categories)
     ? (result.categories as GroupPermissionCategory[])
+    : [];
+}
+
+async function fetchPermissionUploads() {
+  const response = await fetch(
+    "/api/uploads?limit=1000",
+    {
+      method: "GET",
+      cache: "no-store",
+    }
+  );
+
+  const result = await response
+    .json()
+    .catch(() => []);
+
+  if (!response.ok) {
+    throw new Error(
+      result?.error ||
+        "No se pudieron cargar los archivos"
+    );
+  }
+
+  return Array.isArray(result)
+    ? (result as GroupPermissionUpload[])
     : [];
 }
 
@@ -777,6 +813,11 @@ const [
   setMembersMessage,
 ] = useState("");
 
+const [
+  permissionUploadSearch,
+  setPermissionUploadSearch,
+] = useState("");
+
   /* =========================================================
      CONSULTA DE USUARIOS
   ========================================================= */
@@ -889,6 +930,20 @@ const {
     groupModalTab === "PERMISSIONS",
   staleTime: 30_000,
 });
+
+const {
+  data: permissionUploads = [],
+  isLoading: loadingPermissionUploads,
+  isError: permissionUploadsError,
+  error: permissionUploadsQueryError,
+} = useQuery({
+  queryKey: ["permission-uploads"],
+  queryFn: fetchPermissionUploads,
+  enabled:
+    groupModalTab === "PERMISSIONS",
+  staleTime: 30_000,
+});
+
   /* =========================================================
      MUTACIÓN DE USUARIO
   ========================================================= */
@@ -968,6 +1023,7 @@ const {
       });
     },
   });
+
 const saveGroupPermissionMutation =
   useMutation({
     mutationFn: ({
@@ -1037,6 +1093,7 @@ const removeGroupPermissionMutation =
       });
     },
   });
+
   /* =========================================================
      MUTACIÓN CREAR GRUPO
   ========================================================= */
@@ -1198,6 +1255,39 @@ const removeGroupPermissionMutation =
     );
   },
 });
+
+const filteredPermissionUploads =
+  useMemo(() => {
+    const term =
+      permissionUploadSearch
+        .trim()
+        .toLowerCase();
+
+    if (!term) {
+      return permissionUploads;
+    }
+
+    return permissionUploads.filter(
+      (upload) => {
+        const text = [
+          upload.display_name,
+          upload.titulo,
+          upload.file_name,
+          upload.category,
+          upload.subcategory,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return text.includes(term);
+      }
+    );
+  }, [
+    permissionUploads,
+    permissionUploadSearch,
+  ]);
+
   /* =========================================================
      DATOS DERIVADOS
   ========================================================= */
@@ -2832,25 +2922,366 @@ const closeInvitePanel = () => {
       )}
     </section>
 
-    <section className="rounded-xl border border-dashed border-zinc-800 bg-black/20 p-5">
-      <h4 className="font-medium text-zinc-300">
-        Subcategorías
-      </h4>
+   <section className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5">
+  <div className="mb-4">
+    <h4 className="font-semibold text-white">
+      Subcategorías específicas
+    </h4>
 
-      <p className="mt-1 text-xs text-zinc-500">
-        Las configuraremos en el siguiente paso.
-      </p>
-    </section>
+    <p className="mt-1 text-xs leading-5 text-zinc-400">
+      Permite acceso únicamente a determinadas
+      subcategorías sin habilitar la categoría completa.
+    </p>
+  </div>
 
-    <section className="rounded-xl border border-dashed border-zinc-800 bg-black/20 p-5">
-      <h4 className="font-medium text-zinc-300">
-        Archivos específicos
-      </h4>
+  <div className="space-y-5">
+    {permissionCategories.map((category) => {
+      const activeSubcategories =
+        category.subcategories.filter(
+          (subcategory) =>
+            subcategory.is_active
+        );
 
-      <p className="mt-1 text-xs text-zinc-500">
-        Luego agregaremos un buscador para seleccionar videos o documentos concretos.
-      </p>
-    </section>
+      if (
+        activeSubcategories.length === 0
+      ) {
+        return null;
+      }
+
+      return (
+        <div
+          key={category.id}
+          className="rounded-xl border border-zinc-800 bg-black/30 p-4"
+        >
+          <p className="mb-3 text-sm font-semibold text-orange-200">
+            {category.label}
+          </p>
+
+          <div className="space-y-2">
+            {activeSubcategories.map(
+              (subcategory) => {
+                const assignedRule =
+                  groupPermissionsData
+                    ?.subcategories?.find(
+                      (rule) =>
+                        rule.resource_id ===
+                        subcategory.id
+                    );
+
+                const selected =
+                  Boolean(assignedRule);
+
+                const saving =
+                  saveGroupPermissionMutation.isPending ||
+                  removeGroupPermissionMutation.isPending;
+
+                return (
+                  <div
+                    key={subcategory.id}
+                    className={[
+                      "flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between",
+                      selected
+                        ? "border-orange-500/50 bg-orange-500/10"
+                        : "border-zinc-800 bg-zinc-950/60",
+                    ].join(" ")}
+                  >
+                    <label className="flex cursor-pointer items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        disabled={saving}
+                        onChange={() => {
+                          if (
+                            !selectedGroup
+                          ) {
+                            return;
+                          }
+
+                          if (selected) {
+                            removeGroupPermissionMutation.mutate(
+                              {
+                                groupId:
+                                  selectedGroup.id,
+                                resourceType:
+                                  "SUBCATEGORY",
+                                resourceId:
+                                  subcategory.id,
+                              }
+                            );
+
+                            return;
+                          }
+
+                          saveGroupPermissionMutation.mutate(
+                            {
+                              groupId:
+                                selectedGroup.id,
+                              resourceType:
+                                "SUBCATEGORY",
+                              resourceId:
+                                subcategory.id,
+                              accessLevel:
+                                "VIEWER",
+                            }
+                          );
+                        }}
+                        className="h-4 w-4 accent-orange-500"
+                      />
+
+                      <span className="text-sm text-white">
+                        {subcategory.label}
+                      </span>
+                    </label>
+
+                    {selected && (
+                      <select
+                        value={
+                          assignedRule?.access_level ||
+                          "VIEWER"
+                        }
+                        disabled={saving}
+                        onChange={(event) => {
+                          if (
+                            !selectedGroup
+                          ) {
+                            return;
+                          }
+
+                          saveGroupPermissionMutation.mutate(
+                            {
+                              groupId:
+                                selectedGroup.id,
+                              resourceType:
+                                "SUBCATEGORY",
+                              resourceId:
+                                subcategory.id,
+                              accessLevel:
+                                event.target
+                                  .value as
+                                  | "VIEWER"
+                                  | "APPROVER"
+                                  | "EDITOR",
+                            }
+                          );
+                        }}
+                        className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                      >
+                        <option value="VIEWER">
+                          Puede ver
+                        </option>
+
+                        <option value="APPROVER">
+                          Puede aprobar
+                        </option>
+
+                        <option value="EDITOR">
+                          Puede editar
+                        </option>
+                      </select>
+                    )}
+                  </div>
+                );
+              }
+            )}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+</section>
+
+   <section className="rounded-xl border border-zinc-800 bg-zinc-900/70 p-5">
+  <div className="mb-4">
+    <h4 className="font-semibold text-white">
+      Archivos específicos
+    </h4>
+
+    <p className="mt-1 text-xs text-zinc-400">
+      Selecciona videos o documentos concretos
+      que podrá visualizar este grupo.
+    </p>
+  </div>
+
+  <input
+    type="text"
+    value={permissionUploadSearch}
+    onChange={(event) =>
+      setPermissionUploadSearch(
+        event.target.value
+      )
+    }
+    placeholder="Buscar archivo por título, nombre, categoría o subcategoría…"
+    className="mb-4 w-full rounded-lg border border-zinc-700 bg-black px-3 py-2.5 text-sm text-white outline-none placeholder:text-zinc-500 focus:border-orange-500/70"
+  />
+
+  {loadingPermissionUploads ||
+  groupPermissionsLoading ? (
+    <div className="p-6 text-center text-sm text-zinc-400">
+      Cargando archivos...
+    </div>
+  ) : permissionUploadsError ? (
+    <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+      {permissionUploadsQueryError instanceof Error
+        ? permissionUploadsQueryError.message
+        : "No se pudieron cargar los archivos."}
+    </div>
+  ) : (
+    <div className="max-h-96 space-y-2 overflow-y-auto pr-1">
+      {filteredPermissionUploads.map(
+        (upload) => {
+          const assignedRule =
+            groupPermissionsData?.uploads?.find(
+              (rule) =>
+                rule.resource_id ===
+                upload.id
+            );
+
+          const selected =
+            Boolean(assignedRule);
+
+          const saving =
+            saveGroupPermissionMutation.isPending ||
+            removeGroupPermissionMutation.isPending;
+
+          return (
+            <div
+              key={upload.id}
+              className={[
+                "rounded-xl border p-3 transition",
+                selected
+                  ? "border-orange-500/60 bg-orange-500/10"
+                  : "border-zinc-800 bg-black/30",
+              ].join(" ")}
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <label className="flex min-w-0 cursor-pointer items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selected}
+                    disabled={saving}
+                    onChange={() => {
+                      if (
+                        !selectedGroup
+                      ) {
+                        return;
+                      }
+
+                      if (selected) {
+                        removeGroupPermissionMutation.mutate(
+                          {
+                            groupId:
+                              selectedGroup.id,
+                            resourceType:
+                              "UPLOAD",
+                            resourceId:
+                              upload.id,
+                          }
+                        );
+
+                        return;
+                      }
+
+                      saveGroupPermissionMutation.mutate(
+                        {
+                          groupId:
+                            selectedGroup.id,
+                          resourceType:
+                            "UPLOAD",
+                          resourceId:
+                            upload.id,
+                          accessLevel:
+                            "VIEWER",
+                        }
+                      );
+                    }}
+                    className="mt-1 h-4 w-4 accent-orange-500"
+                  />
+
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-white">
+                      {upload.display_name ||
+                        upload.titulo ||
+                        upload.file_name ||
+                        "Archivo sin nombre"}
+                    </span>
+
+                    <span className="mt-1 block text-xs text-zinc-500">
+                      {upload.tipo ||
+                        "archivo"}
+
+                      {" · "}
+
+                      {upload.category ||
+                        "Sin categoría"}
+
+                      {upload.subcategory
+                        ? ` / ${upload.subcategory}`
+                        : ""}
+                    </span>
+                  </span>
+                </label>
+
+                {selected && (
+                  <select
+                    value={
+                      assignedRule?.access_level ||
+                      "VIEWER"
+                    }
+                    disabled={saving}
+                    onChange={(event) => {
+                      if (
+                        !selectedGroup
+                      ) {
+                        return;
+                      }
+
+                      saveGroupPermissionMutation.mutate(
+                        {
+                          groupId:
+                            selectedGroup.id,
+                          resourceType:
+                            "UPLOAD",
+                          resourceId:
+                            upload.id,
+                          accessLevel:
+                            event.target
+                              .value as
+                              | "VIEWER"
+                              | "APPROVER"
+                              | "EDITOR",
+                        }
+                      );
+                    }}
+                    className="rounded-lg border border-zinc-700 bg-black px-3 py-2 text-sm text-white"
+                  >
+                    <option value="VIEWER">
+                      Puede ver
+                    </option>
+
+                    <option value="APPROVER">
+                      Puede aprobar
+                    </option>
+
+                    <option value="EDITOR">
+                      Puede editar
+                    </option>
+                  </select>
+                )}
+              </div>
+            </div>
+          );
+        }
+      )}
+
+      {filteredPermissionUploads.length ===
+        0 && (
+        <div className="rounded-lg border border-dashed border-zinc-700 p-6 text-center text-sm text-zinc-500">
+          No encontramos archivos con esa búsqueda.
+        </div>
+      )}
+    </div>
+  )}
+</section>
   </div>
 )}
             </div>

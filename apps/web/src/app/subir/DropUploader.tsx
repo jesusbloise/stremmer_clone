@@ -1780,10 +1780,6 @@ try {
               Video/Documento hasta 30 GB
             </div>
 
-            <div className="text-zinc-500 text-[11px] mt-2">
-              Los archivos se guardarán en Cloudflare R2 y los
-              videos se enviarán a Cloudflare Stream.
-            </div>
           </div>
 
           <input
