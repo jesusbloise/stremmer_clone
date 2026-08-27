@@ -84,7 +84,7 @@ export default function PendingUploadsBanner() {
 
   if (isLoading) {
     return (
-      <div className="relative mb-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white/60">
+      <div className="relative flex items-center gap-3 rounded-2xlborder border-white/10 bg-white/5 px-4 py-3 pr-12 text-sm text-white/60">
         <Loader2 className="h-4 w-4 animate-spin" />
         Revisando fichas pendientes...
 
@@ -111,7 +111,7 @@ export default function PendingUploadsBanner() {
       : `Tienes ${data.total} fichas técnicas pendientes.`;
 
   return (
-    <div className="relative mb-5 overflow-hidden rounded-2xl border border-amber-400/30 bg-amber-400/10 shadow-lg shadow-amber-950/10">
+    <div className="relative overflow-hidden rounded-2xl border border-amber-400/30 bg-amber-400/10 shadow-lg shadow-amber-950/10">
       <button
         type="button"
         onClick={dismissBanner}
@@ -122,7 +122,7 @@ export default function PendingUploadsBanner() {
         <X className="h-4 w-4" />
       </button>
 
-      <div className="flex flex-col gap-4 px-4 py-4 pr-14 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:pr-14">
+      <div className="flex flex-col gap-3 px-4 py-3 pr-12">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-400/15">
             <AlertTriangle className="h-5 w-5 text-amber-300" />
@@ -142,7 +142,7 @@ export default function PendingUploadsBanner() {
 
         <Link
           href="/mis-pendientes"
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-amber-200"
+          className="mt-1 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-amber-300 px-3 py-2 text-xs font-semibold text-black transition hover:bg-amber-200"
         >
           Revisar pendientes
           <ChevronRight className="h-4 w-4" />

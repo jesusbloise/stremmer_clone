@@ -135,7 +135,7 @@ export default function RestrictedShareBanner() {
   }
 
   return (
-    <div className="relative mb-5 overflow-hidden rounded-2xl border border-orange-400/30 bg-orange-400/10 shadow-lg shadow-orange-950/10">
+    <div className="relative overflow-hidden rounded-2xl border border-orange-400/30 bg-orange-400/10 shadow-lg shadow-orange-950/10">
       <button
         type="button"
         onClick={dismissBanner}
@@ -146,7 +146,7 @@ export default function RestrictedShareBanner() {
         <X className="h-4 w-4" />
       </button>
 
-      <div className="flex flex-col gap-4 px-4 py-4 pr-14 sm:flex-row sm:items-center sm:justify-between sm:px-5 sm:pr-14">
+      <div className="flex flex-col gap-3 px-4 py-3 pr-12">
         <div className="flex min-w-0 items-start gap-3">
           <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-400/15">
             <LockKeyhole className="h-5 w-5 text-orange-300" />
@@ -186,7 +186,7 @@ export default function RestrictedShareBanner() {
               ? `/videos/${notification.upload_id}`
               : "/notificaciones")
           }
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-300 px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-orange-200"
+          className="mt-1 inline-flex w-fit items-center justify-center gap-2 rounded-lg bg-orange-300 px-3 py-2 text-xs font-semibold text-black transition hover:bg-orange-200"
         >
           {total === 1
             ? "Ver archivo"

@@ -184,7 +184,7 @@ const isVideo = current?.tipo === "video" || VIDEO_EXT.test(rawSrc || "");
     <div className="w-full">
       {current && (
         <div className="relative w-full overflow-hidden bg-zinc-950">
-          <div className="relative h-[40vh] sm:h-[50vh] md:h-[60vh] bg-zinc-900">
+          <div className="relative h-[clamp(300px,44vh,430px)] bg-zinc-900">
             {thumbnailSrc ? (
   <img
     src={thumbnailSrc}
@@ -218,13 +218,13 @@ const isVideo = current?.tipo === "video" || VIDEO_EXT.test(rawSrc || "");
   </div>
 )}
 
-          <div className="absolute inset-x-0 bottom-0 z-10 px-4 pb-10 sm:px-6 sm:pb-12 md:px-10 md:pb-14">
+          <div className="absolute inset-x-0 bottom-0 z-10 px-5 pb-7 md:px-8 md:pb-8">
   <div className="max-w-xl">
-    <p className="text-left text-lg font-semibold text-white drop-shadow-md sm:text-2xl md:text-3xl">
+    <p className="text-left text-xl font-bold text-white drop-shadow-md md:text-2xl">
       {name}
     </p>
 
-    <div className="mt-3 flex justify-start">
+    <div className="mt-2 flex justify-start">
       <Link
         href={selectionMode ? "#" : href}
         aria-disabled={selectionMode}
@@ -283,17 +283,17 @@ const isVideo = current?.tipo === "video" || VIDEO_EXT.test(rawSrc || "");
         </div>
       )}
 
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-[1200px] px-4 py-8">
-          <h1 className="text-center text-2xl md:text-3xl font-bold mb-6">
-            Categorías principales
-          </h1>
+      <div className="flex w-full justify-center">
+  <div className="w-full max-w-[1540px] px-2 pb-3 pt-4 md:px-3">
+         <h1 className="mb-3 text-center text-xl font-bold md:text-2xl">
+  Categorías principales
+</h1>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch auto-rows-fr gap-4 sm:gap-6">
+          <div className="grid grid-cols-2 items-stretch gap-3 md:grid-cols-3 xl:grid-cols-6">
             {categories.map((c, i) => (
               <Link key={c.slug} href={`/organizar/${c.slug}`} className="group block h-full min-w-0">
-                <article className="h-full flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900 overflow-hidden shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow">
-                  <div className="relative w-full aspect-[4/3] overflow-hidden bg-black">
+                <article className="flex h-full flex-col overflow-hidden rounded-xl border border-zinc-800/80 bg-zinc-900 shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow">
+                  <div className="relative aspect-[16/10] w-full overflow-hidden bg-black">
                     <Image
                       src={c.cover || "/Publicidad.avif"}
                       alt={c.label}
@@ -304,9 +304,11 @@ const isVideo = current?.tipo === "video" || VIDEO_EXT.test(rawSrc || "");
                     />
                   </div>
 
-                  <div className="p-4 mt-auto text-center">
-                    <h3 className="text-sm sm:text-base font-semibold truncate">{c.label}</h3>
-                    <p className="text-xs sm:text-sm text-zinc-400 mt-1 leading-snug">{c.description}</p>
+                  <div className="mt-auto p-3 text-left">
+                    <h3 className="truncate text-sm font-semibold uppercase md:text-base">
+  {c.label}
+</h3>
+     
                   </div>
                 </article>
               </Link>
