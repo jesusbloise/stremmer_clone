@@ -4,7 +4,11 @@ import pool from "@/db";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl as getR2SignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getR2BucketName, getR2Client } from "@/lib/r2";
-import { getCloudflareStreamVideoStatus } from "@/lib/cloudflareStream";
+import {
+  generateCloudflareStreamCaption,
+  getCloudflareStreamCaptions,
+  getCloudflareStreamVideoStatus,
+} from "@/lib/cloudflareStream";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -589,6 +593,38 @@ FROM uploads
       `,
           [cfStreamStatus, cfStreamReady, cfStreamPlaybackUrl, row.id]
         );
+        
+        if (cfStreamReady) {
+  try {
+    const captions =
+      await getCloudflareStreamCaptions(cfStreamUid);
+
+    const hasSpanishCaption = captions.some(
+      (caption) =>
+        caption.language?.trim().toLowerCase() === "es"
+    );
+
+    if (!hasSpanishCaption) {
+      await generateCloudflareStreamCaption(
+        cfStreamUid,
+        "es"
+      );
+
+      console.log(
+        "CF_STREAM_CAPTION_ES_REQUESTED",
+        {
+          uploadId: row.id,
+          cfStreamUid,
+        }
+      );
+    }
+  } catch (captionError) {
+    console.warn(
+      "No se pudo iniciar caption español en Cloudflare Stream:",
+      captionError
+    );
+  }
+}
       } catch (e) {
         console.warn("No se pudo sincronizar estado Cloudflare Stream:", e);
       }
