@@ -593,34 +593,48 @@ FROM uploads
       `,
           [cfStreamStatus, cfStreamReady, cfStreamPlaybackUrl, row.id]
         );
-        
-        if (cfStreamReady) {
+
+    if (cfStreamReady) {
   try {
     const captions =
       await getCloudflareStreamCaptions(cfStreamUid);
 
-    const hasSpanishCaption = captions.some(
-      (caption) =>
-        caption.language?.trim().toLowerCase() === "es"
-    );
+    const captionLanguages = ["es", "en"];
 
-    if (!hasSpanishCaption) {
-      await generateCloudflareStreamCaption(
-        cfStreamUid,
-        "es"
+    for (const language of captionLanguages) {
+      const hasCaption = captions.some(
+        (caption) =>
+          caption.language?.trim().toLowerCase() === language
       );
 
-      console.log(
-        "CF_STREAM_CAPTION_ES_REQUESTED",
-        {
-          uploadId: row.id,
+      if (hasCaption) {
+        continue;
+      }
+
+      try {
+        await generateCloudflareStreamCaption(
           cfStreamUid,
-        }
-      );
+          language
+        );
+
+        console.log(
+          "CF_STREAM_CAPTION_REQUESTED",
+          {
+            uploadId: row.id,
+            cfStreamUid,
+            language,
+          }
+        );
+      } catch (languageError) {
+        console.warn(
+          `No se pudo iniciar caption ${language} en Cloudflare Stream:`,
+          languageError
+        );
+      }
     }
   } catch (captionError) {
     console.warn(
-      "No se pudo iniciar caption español en Cloudflare Stream:",
+      "No se pudieron consultar captions de Cloudflare Stream:",
       captionError
     );
   }
