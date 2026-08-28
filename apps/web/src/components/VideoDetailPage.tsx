@@ -303,6 +303,7 @@ const isSharedView =
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cloudflareIframeRef = useRef<HTMLIFrameElement | null>(null);
   const cloudflarePlayerRef = useRef<any>(null);
+  const captionsReloadedForVideoRef = useRef<string | null>(null);
   const seekingLockRef = useRef(false);
   const lastJumpRef = useRef<number | null>(null);
   const retriedRef = useRef(false);
@@ -336,6 +337,15 @@ const isSharedView =
     return reloadNonce > 0 ? `${resolvedVideoUrl}${sep}r=${reloadNonce}` : resolvedVideoUrl;
   }, [resolvedVideoUrl, reloadNonce]);
 
+const cloudflareSrcWithReload = useMemo(() => {
+  if (!cloudflareStreamUrl) return null;
+
+  const sep = cloudflareStreamUrl.includes("?") ? "&" : "?";
+
+  return reloadNonce > 0
+    ? `${cloudflareStreamUrl}${sep}r=${reloadNonce}`
+    : cloudflareStreamUrl;
+}, [cloudflareStreamUrl, reloadNonce]);
 
   const documentViewerFileName = useMemo(() => {
     const name = documentFileName || "";
@@ -639,6 +649,78 @@ const isSharedView =
     setVideoError(null);
     retriedRef.current = false;
   }, [videoSrcWithReload, tipo]);
+
+useEffect(() => {
+  if (!id || !usingCloudflareStream || !cloudflareStreamUrl) return;
+  if (isSharedView) return;
+
+  captionsReloadedForVideoRef.current = null;
+
+  let cancelled = false;
+  let intervalId: ReturnType<typeof setInterval> | null = null;
+
+  const checkCaptions = async () => {
+    try {
+      const res = await fetch(`/api/uploads/${id}/captions`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+
+      if (cancelled || !Array.isArray(data?.captions)) return;
+
+      const readyLanguages = new Set(
+        data.captions
+          .filter((caption: any) => caption?.status === "ready")
+          .map((caption: any) =>
+            String(caption?.language || "").trim().toLowerCase()
+          )
+      );
+
+      const captionsReady =
+        readyLanguages.has("es") &&
+        readyLanguages.has("en");
+
+      if (
+        captionsReady &&
+        captionsReloadedForVideoRef.current !== id
+      ) {
+        captionsReloadedForVideoRef.current = id;
+
+        console.log("CLOUDFLARE_CAPTIONS_READY", {
+          uploadId: id,
+          languages: ["es", "en"],
+        });
+
+        setReloadNonce((n) => n + 1);
+
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "No se pudo verificar captions de Cloudflare Stream:",
+        error
+      );
+    }
+  };
+
+  checkCaptions();
+
+  intervalId = setInterval(checkCaptions, 5000);
+
+  return () => {
+    cancelled = true;
+
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
+  };
+}, [id, usingCloudflareStream, cloudflareStreamUrl, isSharedView]);
 
   useEffect(() => {
     if (!usingCloudflareStream || !cloudflareStreamUrl) return;
@@ -1280,7 +1362,7 @@ setTimeout(() => {
                 {usingCloudflareStream && cloudflareStreamUrl ? (
                   <iframe
                     ref={cloudflareIframeRef}
-                    src={cloudflareStreamUrl}
+                    src={cloudflareSrcWithReload ?? undefined}
                     className="rounded-md shadow max-w-full max-h-[520px] w-full aspect-video bg-black"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture;"
                     allowFullScreen
