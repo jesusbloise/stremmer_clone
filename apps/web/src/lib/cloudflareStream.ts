@@ -124,3 +124,90 @@ export async function getCloudflareStreamVideoStatus(uid: string) {
     raw: data.result,
   };
 }
+
+export type CloudflareStreamCaption = {
+  generated?: boolean;
+  label?: string;
+  language?: string;
+  status?: "ready" | "inprogress" | "error";
+};
+
+export async function getCloudflareStreamCaptions(
+  uid: string
+): Promise<CloudflareStreamCaption[]> {
+  const accountId = getRequiredEnv("CF_ACCOUNT_ID");
+  const token = getRequiredEnv("CF_STREAM_TOKEN");
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/captions`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      cache: "no-store",
+    }
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data?.success) {
+    console.error(
+      "CF_STREAM_CAPTIONS_ERROR",
+      JSON.stringify(data, null, 2)
+    );
+
+    throw new Error(
+      data?.errors?.[0]?.message ||
+        data?.messages?.[0]?.message ||
+        "Cloudflare Stream captions request failed"
+    );
+  }
+
+  return Array.isArray(data.result)
+    ? (data.result as CloudflareStreamCaption[])
+    : [];
+}
+
+export async function generateCloudflareStreamCaption(
+  uid: string,
+  language: string
+): Promise<CloudflareStreamCaption> {
+  const accountId = getRequiredEnv("CF_ACCOUNT_ID");
+  const token = getRequiredEnv("CF_STREAM_TOKEN");
+
+  const normalizedLanguage = language.trim().toLowerCase();
+
+  if (!normalizedLanguage) {
+    throw new Error("Caption language is required");
+  }
+
+  const res = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream/${uid}/captions/${encodeURIComponent(
+      normalizedLanguage
+    )}/generate`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    }
+  );
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok || !data?.success) {
+    console.error(
+      "CF_STREAM_CAPTION_GENERATE_ERROR",
+      JSON.stringify(data, null, 2)
+    );
+
+    throw new Error(
+      data?.errors?.[0]?.message ||
+        data?.messages?.[0]?.message ||
+        "Cloudflare Stream caption generation failed"
+    );
+  }
+
+  return data.result as CloudflareStreamCaption;
+}
