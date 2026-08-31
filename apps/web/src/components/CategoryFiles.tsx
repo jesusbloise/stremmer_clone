@@ -376,9 +376,9 @@ export default function CategoryFiles({ slug }: { slug: string }) {
 
   const featuredItem = rows[0] || null;
 
-const carouselRows = useMemo(() => {
-  return rows;
-}, [rows]);
+  const carouselRows = useMemo(() => {
+    return rows;
+  }, [rows]);
 
   const groups: Group[] =
     activeCategory?.subcategories
@@ -529,175 +529,210 @@ const carouselRows = useMemo(() => {
   };
 
   return (
-  <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 -mt-8 pb-6 text-white">
-    
-    {!loading && featuredItem && (
-  <section className="relative mb-6 mt-0">
-    <div className="absolute top-4 left-5 right-5 z-20 flex flex-col md:flex-row md:items-start md:justify-between gap-4 pointer-events-none">
-      <div className="pointer-events-auto">
-        <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow">
-          {title}
-        </h1>
+    <div className="w-full max-w-[1400px] mx-auto px-4 md:px-6 -mt-8 pb-6 text-white">
 
-        <p className="mt-1 text-sm text-zinc-300 drop-shadow">
-          {totalAssets} archivo{totalAssets === 1 ? "" : "s"} disponibles
-        </p>
-      </div>
+      {!loading && featuredItem && (
+        <section className="relative mb-6 mt-0">
+          <div className="absolute top-4 left-5 right-5 z-20 flex flex-col md:flex-row md:items-start md:justify-between gap-4 pointer-events-none">
+            <div className="pointer-events-auto">
+              <h1 className="text-3xl md:text-4xl font-bold text-white drop-shadow">
+                {title}
+              </h1>
 
-      {hasGroups && (
-        <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1">
-          {["Todo", ...groupEntries.map(([sub]) => sub)].map((sub) => {
-            const active = activeShelf === sub;
+              <p className="mt-1 text-sm text-zinc-300 drop-shadow">
+                {totalAssets} archivo{totalAssets === 1 ? "" : "s"} disponibles
+              </p>
+            </div>
+
+            {hasGroups && (
+              <div className="pointer-events-auto flex gap-2 overflow-x-auto pb-1">
+                {["Todo", ...groupEntries.map(([sub]) => sub)].map((sub) => {
+                  const active = activeShelf === sub;
+
+                  return (
+                    <button
+                      key={sub}
+                      type="button"
+                      onClick={() => setActiveShelf(sub)}
+                      className={[
+                        "shrink-0 rounded-full px-4 py-2 text-sm border transition backdrop-blur",
+                        active
+                          ? "border-orange-500 bg-orange-500 text-black font-semibold"
+                          : "border-zinc-700 bg-black/50 text-zinc-300 hover:text-white hover:border-orange-500",
+                      ].join(" ")}
+                    >
+                      {sub}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <FeaturedCard item={featuredItem} compactTop />
+        </section>
+      )}
+
+      {loading ? (
+        <div className="text-zinc-400 py-10">Cargando…</div>
+      ) : grouped.size === 0 ? (
+        <div className="text-zinc-400 py-10">No hay archivos en esta sección.</div>
+      ) : (
+        <>
+          {visibleEntries.map(([sub, items]) => {
+            if (!items.length) return null;
+
+            const id = slugify(sub);
 
             return (
-              <button
+              <div
                 key={sub}
-                type="button"
-                onClick={() => setActiveShelf(sub)}
-                className={[
-                  "shrink-0 rounded-full px-4 py-2 text-sm border transition backdrop-blur",
-                  active
-                    ? "border-orange-500 bg-orange-500 text-black font-semibold"
-                    : "border-zinc-700 bg-black/50 text-zinc-300 hover:text-white hover:border-orange-500",
-                ].join(" ")}
+                ref={(el) => {
+                  sectionRefs.current[id] = el;
+                }}
+                id={`sub-${id}`}
+                className="relative mb-0"
               >
-                {sub}
-              </button>
+                <div className="absolute left-12 right-12 md:left-16 md:right-16 top-3 z-40 flex items-start justify-between pointer-events-none">
+                  <div className="pointer-events-auto rounded-xl bg-black/35 px-3 py-2 backdrop-blur-sm">
+                    <h2 className="text-xl md:text-2xl font-semibold leading-none">{sub}</h2>
+                    <p className="text-xs text-zinc-400 mt-1">
+                      {items.length} archivo{items.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setFullViewSub(sub)}
+                    className="pointer-events-auto text-xs px-3 py-1.5 rounded-full border border-zinc-700 bg-black/35 backdrop-blur-sm hover:border-orange-500 text-zinc-300 hover:text-orange-300 transition"
+                    title="Ver todos los archivos"
+                  >
+                    Ver todos
+                  </button>
+                </div>
+
+                <CategoryCarousel items={items} />
+              </div>
             );
           })}
+
+          <div className="flex w-full justify-center overflow-visible">
+  <div className="w-full max-w-[1540px] overflow-visible px-2 pb-12 pt-6 md:px-3">
+    <h1 className="mb-5 text-center text-xl font-bold md:text-2xl">
+      Categorías principales
+    </h1>
+
+    <div className="flex w-full flex-wrap items-center justify-center gap-4 overflow-visible xl:flex-nowrap xl:gap-5">
+      {categories.map((c, i) => (
+        <Link
+          key={c.slug}
+          href={`/organizar/${c.slug}`}
+          prefetch={false}
+          className="
+            group
+            relative
+            z-0
+            block
+            w-[245px]
+            shrink-0
+            overflow-visible
+            transition-all
+            duration-300
+            ease-out
+            hover:z-50
+          "
+        >
+          <article
+            className="
+              flex
+              h-full
+              origin-center
+              flex-col
+              overflow-hidden
+              rounded-xl
+              border
+              border-zinc-800/80
+              bg-zinc-900
+              shadow-sm
+              transition-all
+              duration-300
+              ease-out
+
+              group-hover:-translate-y-7
+              group-hover:scale-[1.85]
+              group-hover:border-orange-500/70
+              group-hover:shadow-[0_24px_70px_rgba(0,0,0,0.85)]
+            "
+          >
+            <div className="relative aspect-[16/10] w-full overflow-hidden bg-black">
+              <Image
+                src={c.cover || "/Publicidad.avif"}
+                alt={c.label}
+                fill
+                className="
+                  object-cover
+                  transition-all
+                  duration-300
+                  group-hover:scale-[1.04]
+                "
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 245px"
+                priority={i === 0}
+              />
+            </div>
+
+            <div className="mt-auto p-3 text-center">
+              <h3 className="truncate text-center text-sm font-bold uppercase tracking-wide text-white md:text-base">
+                {c.label}
+              </h3>
+            </div>
+          </article>
+        </Link>
+      ))}
+    </div>
+  </div>
+</div>
+        </>
+      )}
+
+      {fullViewSub && (
+        <div className="fixed inset-0 z-40">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative z-50 h-full overflow-y-auto">
+            <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
+              <div className="relative z-20 -mb-8 px-12 md:px-16 flex items-center justify-between">
+                <h2 className="text-2xl md:text-3xl font-bold">{fullViewSub}</h2>
+                <button
+                  onClick={() => setFullViewSub(null)}
+                  className="px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500 text-sm text-zinc-300 hover:text-white"
+                >
+                  Volver
+                </button>
+              </div>
+
+              {fullItems.length === 0 ? (
+                <div className="text-zinc-400 py-12">Sin archivos.</div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {fullPageItems.map((u) => (
+                      <CardItemOverlay key={u.id} item={u} />
+                    ))}
+                  </div>
+
+                  <Pagination
+                    page={fullPage}
+                    totalPages={fullTotalPages}
+                    onPage={setFullPage}
+                  />
+                </>
+              )}
+
+              <div className="h-8" />
+            </div>
+          </div>
         </div>
       )}
     </div>
-
-    <FeaturedCard item={featuredItem} compactTop />
-  </section>
-)}
-
-    {loading ? (
-      <div className="text-zinc-400 py-10">Cargando…</div>
-    ) : grouped.size === 0 ? (
-      <div className="text-zinc-400 py-10">No hay archivos en esta sección.</div>
-    ) : (
-      <>
-        {visibleEntries.map(([sub, items]) => {
-          if (!items.length) return null;
-
-          const id = slugify(sub);
-
-          return (
-            <div
-  key={sub}
-  ref={(el) => {
-    sectionRefs.current[id] = el;
-  }}
-  id={`sub-${id}`}
-  className="relative mb-0"
->
-  <div className="absolute left-12 right-12 md:left-16 md:right-16 top-3 z-40 flex items-start justify-between pointer-events-none">
-    <div className="pointer-events-auto rounded-xl bg-black/35 px-3 py-2 backdrop-blur-sm">
-      <h2 className="text-xl md:text-2xl font-semibold leading-none">{sub}</h2>
-      <p className="text-xs text-zinc-400 mt-1">
-        {items.length} archivo{items.length === 1 ? "" : "s"}
-      </p>
-    </div>
-
-    <button
-      onClick={() => setFullViewSub(sub)}
-      className="pointer-events-auto text-xs px-3 py-1.5 rounded-full border border-zinc-700 bg-black/35 backdrop-blur-sm hover:border-orange-500 text-zinc-300 hover:text-orange-300 transition"
-      title="Ver todos los archivos"
-    >
-      Ver todos
-    </button>
-  </div>
-
-  <CategoryCarousel items={items} />
-</div>
-          );
-        })}
-
-        <div className="w-full flex justify-center">
-          <div className="w-full max-w-[1200px] px-4 py-8">
-            <h1 className="text-center text-2xl md:text-3xl font-bold mb-6">
-              Categorías principales
-            </h1>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch auto-rows-fr gap-4 sm:gap-6">
-              {categories.map((c, i) => (
-                <Link
-                  key={c.slug}
-                  href={`/organizar/${c.slug}`}
-                  prefetch={false}
-                  className="group block h-full min-w-0"
-                >
-                  <article className="h-full flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900 overflow-hidden shadow-sm transition duration-200 hover:-translate-y-0.5 hover:shadow">
-                    <div className="relative w-full aspect-[4/3] overflow-hidden bg-black">
-                      <Image
-                        src={c.cover || "/Publicidad.avif"}
-                        alt={c.label}
-                        fill
-                        className="object-cover group-hover:object-contain transition-all duration-300"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                        priority={i === 0}
-                      />
-                    </div>
-
-                    <div className="p-4 mt-auto text-center">
-                      <h3 className="text-sm sm:text-base font-semibold truncate">
-                        {c.label}
-                      </h3>
-                      <p className="text-xs sm:text-sm text-zinc-400 mt-1 leading-snug">
-                        {c.description}
-                      </p>
-                    </div>
-                  </article>
-                </Link>
-              ))}
-            </div>
-          </div>
-        </div>
-      </>
-    )}
-
-    {fullViewSub && (
-      <div className="fixed inset-0 z-40">
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-        <div className="relative z-50 h-full overflow-y-auto">
-          <div className="max-w-[1400px] mx-auto px-4 md:px-6 py-6">
-            <div className="relative z-20 -mb-8 px-12 md:px-16 flex items-center justify-between">
-              <h2 className="text-2xl md:text-3xl font-bold">{fullViewSub}</h2>
-              <button
-                onClick={() => setFullViewSub(null)}
-                className="px-3 py-1.5 rounded-lg border border-zinc-700 hover:border-zinc-500 text-sm text-zinc-300 hover:text-white"
-              >
-                Volver
-              </button>
-            </div>
-
-            {fullItems.length === 0 ? (
-              <div className="text-zinc-400 py-12">Sin archivos.</div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  {fullPageItems.map((u) => (
-                    <CardItemOverlay key={u.id} item={u} />
-                  ))}
-                </div>
-
-                <Pagination
-                  page={fullPage}
-                  totalPages={fullTotalPages}
-                  onPage={setFullPage}
-                />
-              </>
-            )}
-
-            <div className="h-8" />
-          </div>
-        </div>
-      </div>
-    )}
-  </div>
-);
+  );
 }
 
 function FeaturedCard({
@@ -777,23 +812,23 @@ function CardItem({ item }: { item: UploadItem }) {
   );
   const previewUrl = proxiedUrl(rawUrl);
 
-const typeSource = `${item.file_name || ""} ${item.file_path || ""} ${item.url || ""}`;
+  const typeSource = `${item.file_name || ""} ${item.file_path || ""} ${item.url || ""}`;
 
-const ext = getExt(item);
+  const ext = getExt(item);
 
-const isVideo = item.tipo === "video" || ["mp4", "webm", "mov", "m4v"].includes(ext);
-const isPdf = ext === "pdf";
-const isDocx = ext === "docx";
-const isDoc = ext === "doc";
+  const isVideo = item.tipo === "video" || ["mp4", "webm", "mov", "m4v"].includes(ext);
+  const isPdf = ext === "pdf";
+  const isDocx = ext === "docx";
+  const isDoc = ext === "doc";
 
   return (
     <motion.article
-  className="group h-full flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900 overflow-hidden shadow-sm transition-transform duration-300 ease-out hover:scale-[1.18] hover:z-50 hover:shadow-2xl"
+      className="group relative h-full flex flex-col rounded-xl border border-white/5 bg-zinc-950 overflow-hidden shadow-lg transition-all duration-300 ease-out hover:border-orange-500/70 hover:shadow-[0_24px_70px_rgba(0,0,0,0.85)]"
       initial={isMobile ? undefined : "rest"}
       animate={isMobile ? undefined : "rest"}
       whileHover={isMobile ? undefined : "hover"}
     >
-      <div className="relative aspect-video w-full bg-zinc-800 overflow-hidden">
+      <div className="relative aspect-video w-full bg-black overflow-hidden">
         {isVideo ? (
           <VideoStaticPreview src={previewUrl} poster={item.thumbnail_url} />
         ) : isPdf ? (
@@ -812,21 +847,21 @@ const isDoc = ext === "doc";
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/30 to-black/55" />
         ) : (
           <motion.div
-            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/50"
+            className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/10 to-transparent"
             variants={{
-              rest: { opacity: 0.65 },
-              hover: { opacity: 0.9, transition: { duration: 0.25 } },
+              rest: { opacity: 0.72 },
+              hover: { opacity: 0.92, transition: { duration: 0.25 } },
             }}
           />
         )}
 
-        <div className="absolute inset-x-0 bottom-0 px-4 pb-4 pointer-events-none">
+        <div className="absolute inset-x-0 bottom-0 px-4 pb-4 md:px-5 md:pb-5 pointer-events-none">
           <div className="pointer-events-auto text-left">
-            <p className="text-white text-lg md:text-xl font-bold drop-shadow line-clamp-2">
+            <p className="text-white text-lg md:text-xl font-semibold tracking-tight drop-shadow-lg line-clamp-2">
               {name}
             </p>
 
-            <div className="mt-3 flex items-center justify-start gap-3 flex-wrap">
+            <div className="mt-3 flex items-center justify-start gap-3 flex-wrap md:opacity-0 md:translate-y-2 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-300">
               <Link
                 href={`/videos/${item.id}`}
                 prefetch={false}
@@ -835,7 +870,7 @@ const isDoc = ext === "doc";
                 <motion.button
                   whileHover={{ scale: 1.07 }}
                   whileTap={{ scale: 0.96 }}
-                  className="text-sm px-4 py-2 rounded border text-orange-400 hover:text-orange-500 border-orange-400 hover:border-orange-500 transition"
+                  className="text-xs px-3.5 py-1.5 rounded-md border border-orange-400/80 bg-black/35 backdrop-blur-sm text-orange-300 hover:bg-orange-500 hover:text-black transition"
                 >
                   Ver más
                 </motion.button>
@@ -860,14 +895,14 @@ function CardItemOverlay({ item }: { item: UploadItem }) {
   );
   const previewUrl = proxiedUrl(rawUrl);
 
-const typeSource = `${item.file_name || ""} ${item.file_path || ""} ${item.url || ""}`;
+  const typeSource = `${item.file_name || ""} ${item.file_path || ""} ${item.url || ""}`;
 
-const ext = getExt(item);
+  const ext = getExt(item);
 
-const isVideo = item.tipo === "video" || ["mp4", "webm", "mov", "m4v"].includes(ext);
-const isPdf = ext === "pdf";
-const isDocx = ext === "docx";
-const isDoc = ext === "doc";
+  const isVideo = item.tipo === "video" || ["mp4", "webm", "mov", "m4v"].includes(ext);
+  const isPdf = ext === "pdf";
+  const isDocx = ext === "docx";
+  const isDoc = ext === "doc";
 
   return (
     <motion.article className="group h-full flex flex-col rounded-2xl border border-zinc-800/80 bg-zinc-900 overflow-hidden shadow-sm">
@@ -914,10 +949,20 @@ const isDoc = ext === "doc";
 
 function CategoryCarousel({ items }: { items: UploadItem[] }) {
   const rowRef = useRef<HTMLDivElement | null>(null);
+  const sectionRef = useRef<HTMLElement | null>(null);
+
+  const [hoveredCard, setHoveredCard] = useState<{
+    item: UploadItem;
+    left: number;
+    top: number;
+    width: number;
+  } | null>(null);
 
   const scrollByAmount = (dir: "left" | "right") => {
     const el = rowRef.current;
     if (!el) return;
+
+    setHoveredCard(null);
 
     const amount = Math.floor(el.clientWidth * 0.85);
 
@@ -927,10 +972,32 @@ function CategoryCarousel({ items }: { items: UploadItem[] }) {
     });
   };
 
+  const showHoveredCard = (
+    item: UploadItem,
+    element: HTMLDivElement
+  ) => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    const cardRect = element.getBoundingClientRect();
+    const sectionRect = section.getBoundingClientRect();
+
+    setHoveredCard({
+      item,
+      left: cardRect.left - sectionRect.left,
+      top: cardRect.top - sectionRect.top,
+      width: cardRect.width,
+    });
+  };
+
   if (!items.length) return null;
 
   return (
-    <section className="relative group px-12 md:px-16 pt-9">
+    <section
+      ref={sectionRef}
+      className="relative group overflow-visible px-10 md:px-16 pt-8 pb-8"
+      onMouseLeave={() => setHoveredCard(null)}
+    >
       <button
         type="button"
         onClick={() => scrollByAmount("left")}
@@ -948,17 +1015,51 @@ function CategoryCarousel({ items }: { items: UploadItem[] }) {
           msOverflowStyle: "none",
         }}
       >
-        <div className="flex gap-5 pb-2">
+        <div className="flex gap-6 md:gap-8 py-8">
           {items.map((u) => (
             <div
               key={u.id}
-             className="relative shrink-0 w-[70vw] sm:w-[280px] md:w-[300px] lg:w-[320px] xl:w-[340px]"
+              onMouseEnter={(event) =>
+                showHoveredCard(u, event.currentTarget)
+              }
+              className={[
+                "relative shrink-0 w-[78vw] sm:w-[300px] md:w-[320px] lg:w-[350px] xl:w-[370px]",
+                hoveredCard?.item.id === u.id
+                  ? "md:opacity-0"
+                  : "",
+              ].join(" ")}
             >
               <CardItem item={u} />
             </div>
           ))}
         </div>
       </div>
+
+      {hoveredCard && (
+        <div
+          className="
+            pointer-events-auto
+            absolute
+            z-50
+            hidden
+            origin-center
+            md:block
+            transition-all
+            duration-300
+            ease-out
+            -translate-y-4
+            scale-[1.55]
+          "
+          style={{
+            left: hoveredCard.left,
+            top: hoveredCard.top,
+            width: hoveredCard.width,
+          }}
+          onMouseLeave={() => setHoveredCard(null)}
+        >
+          <CardItem item={hoveredCard.item} />
+        </div>
+      )}
 
       <button
         type="button"
